@@ -1,0 +1,70 @@
+services:
+  airflow:
+    build:
+      context: .
+      dockerfile: airflow/Dockerfile
+    image: capstone-airflow:local
+    container_name: af
+    hostname: af
+    command: airflow standalone
+    ports:
+      - 8080:8080 # Airflow Web UI
+    networks:
+      - spark-network
+    environment:
+      - AIRFLOW_CONN_SPARK_DEFAULT=spark://leader:7077?deploy-mode=client&spark_binary=spark-submit
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./work-dir:/opt/airflow/work-dir
+
+  leader:
+    build: ./leader
+    container_name: leader
+    hostname: leader
+    ports:
+      - 8081:8080 # Spark Web UI
+      - 7077:7077 # Spark leader port
+    volumes:
+      - ./conf:/opt/spark/conf
+      - ./work-dir:/opt/spark/work-dir
+      - ./output:/opt/spark/files/out
+      - ./data:/opt/spark/files/in
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master -h leader
+    networks:
+      - spark-network
+
+
+  worker-1:
+    build: ./worker
+    container_name: worker-1
+    hostname: worker-1
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://leader:7077
+    ports:
+      - 8082:8081
+    volumes:
+      - ./conf:/opt/spark/conf
+      - ./output:/opt/spark/files/out
+      - ./data:/opt/spark/files/in
+    networks:
+      - spark-network
+    depends_on:
+      - leader
+
+  worker-2:
+    build: ./worker
+    container_name: worker-2
+    hostname: worker-2
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://leader:7077
+    ports:
+      - 8083:8081
+    volumes:
+      - ./conf:/opt/spark/conf
+      - ./output:/opt/spark/files/out
+      - ./data:/opt/spark/files/in
+    networks:
+      - spark-network
+    depends_on:
+      - leader
+
+networks:
+  spark-network:

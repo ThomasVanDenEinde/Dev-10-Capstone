@@ -7,7 +7,7 @@
 - Wizards made a decision to not print cards to demand after a certain date. Can this date be pin-pointed by visualizing cost data?
 - which is rising faster: estimated card cost via inflation or actual card cost?
 
-## Peer questions:
+## Questions from peers:
 - What is power creep? what is complexity creep?
 
 ## Machine learning ideas:
@@ -25,6 +25,8 @@
     - completed: **6/19**
 - Data importation
     - completed: **6/22**
+- Schema diagram
+    - completed: **6/23**
 - Data cleaning in Airflow via Pandas (for primary set) and Spark (for larger secondary set)
     - estimated: **6/24**
     - completed: 
