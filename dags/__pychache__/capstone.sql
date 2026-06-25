@@ -10,11 +10,11 @@ create table card (
     "text" text,
     print_date date,
     power int not null,
-    toughness not null
+    toughness int not null
 );
 
 create table card_types(
-    card_id varchar(50) foreign key
+    card_id varchar(50) not null
         references card(card_id),
     sub_types varchar(50),
     types varchar(100),
@@ -22,17 +22,17 @@ create table card_types(
 );
 
 create table card_mana(
-    card_id varchar(50) foreign key
+    card_id varchar(50) not null
         references card(card_id),
     color_id varchar(10),
     colors varchar(20),
     cmc int not null,
     mana_cost varchar(20) not null,
-    mana_value
+    mana_value int not null
 );
 
 create table card_price(
-    card_id varchar(50) foreign key
+    card_id varchar(50) not null
         references card(card_id),
     price numeric(8,2) not null,
     "date" date not null,

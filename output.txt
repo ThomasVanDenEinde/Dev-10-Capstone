@@ -1,0 +1,15 @@
+name: Ancestor's Chosen
+colorIdentity: ['W']
+colors: ['W']
+convertedManaCost: 7.0
+isFunny: None
+layout: normal
+manaCost: {5}{W}{W}
+manaValue: 7.0
+printings: ['10E', 'JUD', 'UMA']
+subtypes: ['Human', 'Cleric']
+supertypes: []
+text: First strike (This creature deals combat damage before creatures without first strike.)
+When this creature enters, you gain 1 life for each card in your graveyard.
+types: ['Creature']
+card_id: 5f8287b1-5bb6-5f4c-ad17-316a40d5bb0c
