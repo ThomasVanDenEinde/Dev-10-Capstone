@@ -4,13 +4,13 @@ set search_path to capstone;
 
 create table card (
     card_id varchar(50) primary key,
-    name varchar(50) not null,
+    name varchar(150) not null,
     is_funny boolean not null,
     layout varchar(50),
     "text" text,
     print_date date,
-    power int not null,
-    toughness int not null
+    power varchar(3),
+    toughness varchar(3)
 );
 
 create table card_types(
@@ -32,8 +32,7 @@ create table card_mana(
 );
 
 create table card_price(
-    card_id varchar(50) not null
-        references card(card_id),
+    card_id varchar(50) not null,
     price numeric(8,2) not null,
     "date" date not null,
     printings varchar(100)

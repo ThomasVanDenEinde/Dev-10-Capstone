@@ -9,6 +9,7 @@ default_args = {
    'start_date': datetime(2026, 1, 1),
 }
 
+
 with DAG('capstone_dag', default_args=default_args, schedule='@daily') as capstone_dag:
     create_schema = SQLExecuteQueryOperator(
     task_id="instantiate_fresh_tables",
@@ -18,7 +19,9 @@ with DAG('capstone_dag', default_args=default_args, schedule='@daily') as capsto
 
     submit_etl = SparkSubmitOperator(
     application="/opt/airflow/work-dir/etl.py",
-    task_id="etl"
+    task_id="etl",
+    conn_id="spark_default",  # Ensure this points to your Spark connection
+    packages="org.postgresql:postgresql:42.7.3",  # <-- Add this parameter here!
    )
 
     create_schema >> submit_etl

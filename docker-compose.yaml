@@ -16,6 +16,8 @@ services:
     volumes:
       - ./dags:/opt/airflow/dags
       - ./work-dir:/opt/airflow/work-dir
+      - ./data:/opt/airflow/data
+      - ./conf:/opt/spark/conf
 
   leader:
     build: ./leader

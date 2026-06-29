@@ -22,7 +22,9 @@ text=[]
 types=[]
 date=[]
 uuid=[]
-
+power=[]
+toughness=[]
+print_date=[]
 
 for block in data_df.keys():
     cards = data_df.get(block).get("cards")
@@ -41,7 +43,10 @@ for block in data_df.keys():
         text.append(card.get("text"))
         types.append(card.get("types"))
         uuid.append(card.get("uuid"))
-    
+        power.append(card.get("power"))
+        toughness.append(card.get("toughness"))
+        print_date.append(card.get("originalReleaseDate"))
+
 
 def get_card_dict(series_name):
     value = data_df.at[0, series_name]
@@ -54,19 +59,22 @@ def get_card_dict(series_name):
 tabular_data = pd.DataFrame(
     {
         "name": names,
-        "colorIdentity": colorIdentitys,
+        "color_id": colorIdentitys,
         "colors": colors,
         "convertedManaCost": convertedManaCosts,
-        "isFunny": isFunny,
+        "is_funny": isFunny,
         "layout": layouts,
-        "manaCost": manacosts,
-        "manaValue": manaValues,
+        "mana_cost": manacosts,
+        "mana_value": manaValues,
         "printings": printings,
-        "subtypes": subtypes,
-        "supertypes": supertypes,
+        "sub_types": subtypes,
+        "super_types": supertypes,
         "text": text,
         "types": types,
-        "card_id":uuid
+        "card_id":uuid,
+        "power": power,
+        "toughness":toughness,
+        "print_date":print_date
     }
 )
 
@@ -101,43 +109,113 @@ def write_by_name(card_name):
         for column in test_print.columns:
             f.write(f"{str(column)}: {str(test_print[column].values[0])}\n")
 
+with open("data/AllPrices.json","r",encoding="utf-8") as f:
+    temp_price_df = json.load(f).get('data')
+#ith open("data/pickled_price_df.pkl", "rb") as file:
+#   temp_price_df = pickle.load(file)
 
-with open("data/pickled_price_df.pkl", "rb") as file:
-    temp_price_df = pickle.load(file)
 
-price_df = pd.DataFrame.from_dict(temp_price_df, orient="index")
-price_df = price_df.reset_index().rename(columns={"index": "uuid"})
+stores = ["cardmarket","tcgplayer","manapool","cardkingdom"]
 
-# price_df["price"] = price_df[["cardmarket","tcgplayer","manapool","cardkingdom"]].mean(axis=1, skipna=True) 
 
-tabular_data = tabular_data.merge(
+def extract_price_series(store_payload, use_foil):
+    if not isinstance(store_payload, dict):
+        return {}
+
+    if use_foil:
+        foil_series = store_payload.get("foil", {}).get("normal")
+        if isinstance(foil_series, dict):
+            return foil_series
+        retail_foil_series = store_payload.get("retail", {}).get("foil")
+        if isinstance(retail_foil_series, dict):
+            return retail_foil_series
+        return {}
+
+    retail_normal_series = store_payload.get("retail", {}).get("normal")
+    if isinstance(retail_normal_series, dict):
+        return retail_normal_series
+    return {}
+
+
+raw_price_data = []
+
+for card_uuid, payload in temp_price_df.items():
+    paper_payload = payload.get("paper", {}) if isinstance(payload, dict) else {}
+
+    has_any_nonfoil = any(
+        isinstance(
+            paper_payload.get(store, {}).get("retail", {}).get("normal"),
+            dict,
+        )
+        and len(paper_payload.get(store, {}).get("retail", {}).get("normal")) > 0
+        for store in stores
+    )
+    foil_mode = not has_any_nonfoil
+
+    store_series = {
+        store: extract_price_series(paper_payload.get(store, {}), foil_mode)
+        for store in stores
+    }
+
+    all_dates = sorted(
+        {
+            date
+            for series in store_series.values()
+            for date in series.keys()
+        }
+    )
+
+    for date in all_dates:
+        row = {
+            "uuid": card_uuid,
+            "date": date,
+            "is_foil_price": foil_mode,
+        }
+        for store in stores:
+            row[store] = store_series[store].get(date)
+        raw_price_data.append(row)
+
+price_df = pd.DataFrame(raw_price_data)
+if not price_df.empty:
+    price_df["price"] = price_df[stores].mean(axis=1, skipna=True)
+else:
+    price_df = pd.DataFrame(
+        columns=["uuid", "date", *stores, "price", "is_foil_price"]
+    )
+
+price_df["price"] = price_df["price"].apply(lambda x: round(x, 2))
+
+intersect_count = len(
+    set(price_df["uuid"].dropna().unique())
+    & set(tabular_data["card_id"].dropna().unique())
+)
+print(f"intersecting uuid/card_id count: {intersect_count}")
+
+shared_ids = set(price_df["uuid"].dropna().unique()) & set(
+    tabular_data["card_id"].dropna().unique()
+)
+tabular_data = tabular_data[tabular_data["card_id"].isin(shared_ids)].copy()
+price_df = price_df[price_df["uuid"].isin(shared_ids)].copy()
+print(
+    f"filtered rows => tabular_data: {len(tabular_data)}, price_df: {len(price_df)}"
+)
+
+
+card_price_df = tabular_data.merge(
     price_df,
-    how="left",
+    how="inner",
     left_on="card_id",
     right_on="uuid",
 )
+card_price_df["layout"] = card_price_df["layout"].apply(lambda x: ', '.join(x))
+card_price_df["is_funny"] = card_price_df["is_funny"].fillna(False)
+card_price_df["is_funny"] = card_price_df["is_funny"].astype(bool, errors='raise')
+card_price_df["print_date"] = pd.to_datetime(card_price_df["print_date"]).dt.strftime('%Y-%m-%dT%H:%M:%SZ')
 
+for column in card_price_df[["card_id",
+                                               "sub_types",
+                                               "types",
+                                               "super_types",
+                                               ]].columns:
+    print(f"{column}: {card_price_df[column].dtype}")
 
-empty_mask = tabular_data["colorIdentity"].apply(
-    lambda v: v is None
-    or (isinstance(v, str) and v == "")
-    or (isinstance(v, list) and len(v) == 0)
-)
-tabular_data.loc[empty_mask, "colorIdentity"] = "colorless"
-
-tabular_data["isFunny"] = tabular_data["isFunny"].fillna(False)
-tabular_data["isFunny"] = tabular_data["isFunny"].apply(lambda x: bool(x))
-
-tabular_data["manaCost"] = tabular_data["manaCost"].fillna("{0}")
-
-tabular_data["text"] = tabular_data["text"].fillna("")
-
-print_null_and_empty_summary(tabular_data)
-name = tabular_data["name"][tabular_data["price"].notna() | tabular_data["price"].notnull()]
-print(name)
-write_by_name(name)
-
-# print("meta_df columns:", len(meta_df.columns))
-# print("data_df columns:", len(data_df.columns))
-# 
-# print(data_df.columns.to_list()[:2])"""
