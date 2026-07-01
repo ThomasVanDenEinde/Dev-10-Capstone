@@ -3,6 +3,7 @@ import json
 import pandas as pd
 import pickle
 import gc
+import os
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from pathlib import Path
 from pyspark.sql.types import (
@@ -23,6 +24,40 @@ DATA_DIR = PROJECT_ROOT / "data"
 spark = (SparkSession.builder.appName("ExamplePySparkApp")
          .config("spark.jars.packages", "org.postgresql:postgresql:42.7.3")
          .getOrCreate())
+
+
+def load_local_spark_defaults(project_root):
+    defaults = {}
+    conf_path = project_root / "conf" / "spark-defaults.conf"
+    if not conf_path.exists():
+        return defaults
+
+    for raw_line in conf_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+
+        parts = line.split(None, 1)
+        if len(parts) != 2:
+            continue
+        key, value = parts
+        defaults[key.strip()] = value.strip()
+
+    return defaults
+
+
+LOCAL_SPARK_DEFAULTS = load_local_spark_defaults(PROJECT_ROOT)
+
+
+def get_spark_config(key):
+    try:
+        return spark.conf.get(key)
+    except Exception:
+        env_key = key.upper().replace(".", "_")
+        env_value = os.getenv(env_key)
+        if env_value:
+            return env_value
+        return LOCAL_SPARK_DEFAULTS.get(key)
 
 with open(DATA_DIR / "AllPrintings.json", "r", encoding="utf-8") as f:
     data = json.load(f)
@@ -248,11 +283,21 @@ print(
 )
 
 jdbc_options = {
-    "url": spark.conf.get("spark.postgresql.capstone.url"),
-    "user": spark.conf.get("spark.postgresql.capstone.user"),
-    "password": spark.conf.get("spark.postgresql.capstone.password"),
+    "url": get_spark_config("spark.postgresql.capstone.url"),
+    "user": get_spark_config("spark.postgresql.capstone.user"),
+    "password": get_spark_config("spark.postgresql.capstone.password"),
     "driver": "org.postgresql.Driver",
 }
+
+missing_jdbc_keys = [
+    key for key in ("url", "user", "password") if not jdbc_options.get(key)
+]
+if missing_jdbc_keys:
+    raise ValueError(
+        "Missing JDBC config values for: "
+        + ", ".join(missing_jdbc_keys)
+        + ". Set Spark SQL conf, environment variables, or conf/spark-defaults.conf."
+    )
 print("Inserting into cards...")
 cards_pd = tabular_data.copy()
 

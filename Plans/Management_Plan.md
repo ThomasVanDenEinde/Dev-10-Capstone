@@ -37,3 +37,9 @@
 - ETL (see ETL document)
     - estimated: **6/29**
     - completed:
+
+1 how has card complexity changed over time
+2 how has card power changed over time
+3 which card characteristics are associated with higher prices?
+4 which color groups have highest price volatility over time
+5 do newer prints command higher prices at the same man value?
