@@ -1,6 +1,5 @@
 from dash import Dash, dash_table, html, dcc, Input, Output, callback
 import plotly.express as px
-from pyspark.sql import SparkSession
 from pathlib import Path
 from sqlalchemy import create_engine, text
 import pandas as pd

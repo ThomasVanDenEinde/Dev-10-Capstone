@@ -1,0 +1,32 @@
+TARGET QUESTIONS:
+Visualize power creep, is it verifiable?
+Visualize complexity creep is it verifiable?
+What card characteristics are more valuable?
+Do newer prints command higher prices for the same CMC?
+Which color groups have the highest price volatility?
+
+DATASET INFORMATION:
+Both datasets were downloaded from MTGJSON.com
+Both datasets were accessed on 6/19/2026
+APA formated sources: All Files. (2025). Mtgjson.com. https://mtgjson.com/downloads/all-files/
+
+ETL PROCESS:
+Remove majority NA rows
+Fill remaining NA’s
+Change d-types
+Merge by UUIDs between primary and secondary datasets
+Remove any un-merged rows
+Calc average price between all stores
+
+TECHNOLOGIES USED:
+Apache Airflow
+Pandas
+Pyspark
+SQLAlchemy
+Dash
+
+CONCLUSIONS:
+Both power and complexity creep are verifiable using linear or quadratic fits of power and complexity data over time
+Low mana cost non creature cards are more valuable characteristics going off card price
+print era alone does not strongly corrolate with price. The price fluctuates across mana costs for each era. 
+4 colored cards have the highest price volatility because of one significant outlier. Aside that outlier, colorless and mon-colored cards are most volatile.
